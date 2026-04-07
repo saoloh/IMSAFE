@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAFEFLY - Pilot Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --deep:#080808;--electric:#00E5FF;--amber:#FFB300;--danger:#FF3B3B;--safe:#00FF88;
+  --glass:rgba(0,229,255,0.05);--border:rgba(0,229,255,0.25);
+}
+body{background:var(--deep);color:#e0e0e0;font-family:'JetBrains Mono','IBM Plex Sans Arabic',monospace;overflow-x:hidden;min-height:100vh}
+
+/* Global HUD scanline effect */
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,255,0.01) 2px,rgba(0,229,255,0.01) 4px);pointer-events:none;z-index:9999}
+
+/* Screens Management */
+.screen{display:none;min-height:100vh;padding:20px;flex-direction:column;align-items:center;justify-content:center;animation:fade-in 0.5s ease-out}
+.screen.active{display:flex}
+@keyframes fade-in{from{opacity:0;transform:scale(0.98)}to{opacity:1;transform:scale(1)}}
+
+/* UI Components */
+.hud-box{background:rgba(0,229,255,0.03);border:1px solid var(--border);border-radius:12px;padding:30px;width:100%;max-width:450px;position:relative;backdrop-filter:blur(10px)}
+.hud-title{font-family:'Orbitron',sans-serif;color:var(--electric);letter-spacing:4px;text-align:center;margin-bottom:25px;font-size:1.2rem}
+.hud-input{width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:white;padding:12px;margin-bottom:15px;border-radius:4px;font-family:inherit}
+.hud-btn{width:100%;background:transparent;border:1px solid var(--electric);color:var(--electric);padding:15px;cursor:pointer;font-family:'Orbitron',sans-serif;letter-spacing:2px;transition:0.3s;position:relative;overflow:hidden}
+.hud-btn:hover{background:var(--electric);color:var(--deep);box-shadow:0 0 20px rgba(0,229,255,0.4)}
+
+/* Login Page Specific */
+#login-screen{background:radial-gradient(circle at center, #0a1a1f 0%, #080808 100%)}
+
+/* Form Page Specific */
+.form-grid{display:grid;grid-template-columns:1fr;gap:15px;width:100%;margin-bottom:20px}
+.form-item{background:rgba(0,229,255,0.05);padding:15px;border:1px solid rgba(0,229,255,0.1);border-radius:8px;display:flex;justify-content:space-between;align-items:center}
+.form-label{font-size:0.9rem}
+
+/* Dashboard Specific */
+.dashboard-container{width:100%;max-width:1200px;display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:20px}
+.readiness-gauge{text-align:center;padding:20px}
+.gauge-circle{width:150px;height:150px;border-radius:50%;border:5px solid var(--border);display:flex;align-items:center;justify-content:center;margin:0 auto 15px;position:relative}
+.gauge-val{font-family:'Orbitron',sans-serif;font-size:2rem;font-weight:900}
+.suggestions-box{background:rgba(255,179,0,0.05);border:1px solid var(--amber);border-radius:8px;padding:15px;margin-top:20px}
+.suggestion-item{color:var(--amber);font-size:0.85rem;margin-bottom:8px;display:flex;align-items:start;gap:8px}
+
+/* Reuse existing styles for consistency */
+.corner-tl{position:absolute;top:10px;right:10px;width:15px;height:15px;border-top:2px solid var(--electric);border-right:2px solid var(--electric)}
+.corner-bl{position:absolute;bottom:10px;left:10px;width:15px;height:15px;border-bottom:2px solid var(--electric);border-left:2px solid var(--electric)}
+
+</style>
+</head>
+<body>
+
+<!-- 1. LOGIN SCREEN -->
+<section id="login-screen" class="screen active">
+  <div class="hud-box">
+    <div class="corner-tl"></div><div class="corner-bl"></div>
+    <h2 class="hud-title">PILOT AUTHENTICATION</h2>
+    <input type="text" id="pilot-name" class="hud-input" placeholder="اسم الطيار / Pilot Name">
+    <input type="text" id="license-id" class="hud-input" placeholder="رقم الرخصه / License ID">
+    <button class="hud-btn" onclick="goToForm()">LOGIN SYSTEM</button>
+  </div>
+</section>
+
+<!-- 2. IMSAFE FORM SCREEN -->
+<section id="form-screen" class="screen">
+  <div class="hud-box" style="max-width:600px">
+    <div class="corner-tl"></div><div class="corner-bl"></div>
+    <h2 class="hud-title">PRE-FLIGHT SELF ASSESSMENT (IMSAFE)</h2>
+    <div class="form-grid">
+      <div class="form-item">
+        <span class="form-label">هل تشعر بأي مرض؟ (Illness)</span>
+        <input type="checkbox" class="imsafe-check" data-type="I">
+      </div>
+      <div class="form-item">
+        <span class="form-label">هل تناولت أدوية مؤخراً؟ (Medication)</span>
+        <input type="checkbox" class="imsafe-check" data-type="M">
+      </div>
+      <div class="form-item">
+        <span class="form-label">هل تعاني من ضغوط نفسية؟ (Stress)</span>
+        <input type="checkbox" class="imsafe-check" data-type="S">
+      </div>
+      <div class="form-item">
+        <span class="form-label">هل استهلكت كحول خلال 8 ساعات؟ (Alcohol)</span>
+        <input type="checkbox" class="imsafe-check" data-type="A">
+      </div>
+      <div class="form-item">
+        <span class="form-label">هل تشعر بالإرهاق؟ (Fatigue)</span>
+        <input type="checkbox" class="imsafe-check" data-type="F">
+      </div>
+      <div class="form-item">
+        <span class="form-label">هل حالتك العاطفية مستقرة؟ (Emotion)</span>
+        <input type="checkbox" class="imsafe-check" data-type="E" checked>
+      </div>
+    </div>
+
+    <!-- ADDED: Weight & Balance Section -->
+    <h3 style="font-size:0.8rem; margin-bottom:10px; color:var(--electric); text-align:right">الأوزان والاتزان (Weight & Balance)</h3>
+    <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:10px">
+      <div class="form-item" style="flex-direction:column; align-items:start">
+        <span class="form-label" style="font-size:0.7rem">وزن الوقود (Fuel Gallons)</span>
+        <input type="number" id="fuel-input" class="hud-input" value="40" style="margin:5px 0 0 0">
+      </div>
+      <div class="form-item" style="flex-direction:column; align-items:start">
+        <span class="form-label" style="font-size:0.7rem">الركاب (Passengers Weight lbs)</span>
+        <input type="number" id="pax-input" class="hud-input" value="170" style="margin:5px 0 0 0">
+      </div>
+    </div>
+    
+    <button class="hud-btn" onclick="generateDashboard()">GENERATE FLIGHT STATUS</button>
+  </div>
+</section>
+
+<!-- 3. DASHBOARD SCREEN -->
+<section id="dash-screen" class="screen">
+  <div class="hud-box" style="max-width:1100px; min-height:85vh">
+    <div class="corner-tl"></div><div class="corner-bl"></div>
+    
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between; width:100%; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:20px">
+      <div>
+        <div style="font-size:0.7rem; color:var(--electric)">PILOT IN COMMAND</div>
+        <div id="display-name" style="font-family:'Orbitron'; font-weight:bold">---</div>
+      </div>
+      <div style="text-align:center">
+         <div style="font-size:0.7rem; color:var(--electric)">PFD SIMULATOR</div>
+         <div id="pfd-horizon" style="width:80px; height:40px; background:linear-gradient(to bottom, #00A2FF 50%, #8B4513 50%); border:1px solid white; border-radius:4px; margin-top:5px; transition:0.1s"></div>
+      </div>
+      <div style="text-align:left">
+        <div style="font-size:0.7rem; color:var(--electric)">STATUS</div>
+        <div id="flight-status-text" style="font-family:'Orbitron'; color:var(--safe)">READY</div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1.5fr 1fr; gap:20px">
+      <!-- Gauge Column -->
+      <div class="readiness-gauge">
+        <div class="gauge-circle" id="gauge-container">
+          <div class="gauge-val" id="readiness-pct">0%</div>
+        </div>
+        <div style="font-size:0.8rem; letter-spacing:2px">FLIGHT READINESS INDEX</div>
+        
+        <div id="wb-status" style="margin-top:20px; font-size:0.7rem; background:rgba(0,0,0,0.3); padding:10px; border-radius:4px">
+            W&B: CALCULATING...
+        </div>
+      </div>
+
+      <!-- Center Column: Suggestions -->
+      <div>
+        <h3 style="font-size:0.9rem; margin-bottom:10px; color:var(--electric)">AI BRIEFING & SUGGESTIONS</h3>
+        <div id="suggestions-container" class="suggestions-box">
+          <!-- Injected by JS -->
+        </div>
+        
+        <!-- Added: Weather Decoder -->
+        <div style="margin-top:20px">
+            <h3 style="font-size:0.9rem; margin-bottom:10px; color:var(--electric)">METAR DECODER (Simulated)</h3>
+            <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:4px; font-size:0.8rem">
+                <code style="color:var(--amber)">EGLL 071230Z 24012KT CAVOK 22/14 Q1013</code>
+                <div style="margin-top:8px; color:#aaa">ريح من 240 درجة بسرعة 12 عقدة. الرؤية ممتازة. الضغط 1013.</div>
+            </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Telemetry -->
+      <div style="display:flex; flex-direction:column; gap:10px">
+          <div style="background:rgba(0,229,255,0.05); padding:15px; border-radius:8px">
+            <div style="font-size:0.6rem">FUEL ENDURANCE</div>
+            <div id="fuel-time" style="color:var(--safe); font-size:1.2rem; font-family:'Orbitron'">04:30<span>h</span></div>
+          </div>
+          <div style="background:rgba(0,229,255,0.05); padding:15px; border-radius:8px">
+            <div style="font-size:0.6rem">V-SPEEDS (C172)</div>
+            <div style="color:var(--electric); font-size:0.8rem">Vr: 55kts | Vy: 74kts</div>
+          </div>
+          <div style="background:rgba(255,59,59,0.05); padding:15px; border-radius:8px; border:1px solid rgba(255,59,59,0.2)">
+            <div style="font-size:0.6rem; color:var(--danger)">NEAREST ALTERNATE</div>
+            <div style="color:white; font-size:0.9rem">HECA (CAIRO INTL)</div>
+            <div style="font-size:0.6rem; color:#888">Dist: 12.4nm | Hdg: 045°</div>
+          </div>
+      </div>
+    </div>
+
+    <div style="margin-top:30px; display:grid; grid-template-columns: repeat(3, 1fr); gap:10px">
+        <div style="background:rgba(0,229,255,0.05); padding:10px; text-align:center; border-radius:4px">
+            <div style="font-size:0.6rem">WIND</div>
+            <div style="color:var(--electric)">240/12KT</div>
+        </div>
+        <div style="background:rgba(0,229,255,0.05); padding:10px; text-align:center; border-radius:4px">
+            <div style="font-size:0.6rem">VISIBILITY</div>
+            <div style="color:var(--electric)">10SM</div>
+        </div>
+        <div style="background:rgba(0,229,255,0.05); padding:10px; text-align:center; border-radius:4px">
+            <div style="font-size:0.6rem">ALTIMETER</div>
+            <div style="color:var(--electric)">29.92 IN</div>
+        </div>
+    </div>
+
+    <button class="hud-btn" style="margin-top:30px" onclick="location.reload()">NEW ASSESSMENT</button>
+  </div>
+</section>
+
+<script>
+let pilotData = {
+    name: '',
+    license: '',
+    imsafe: {}
+};
+
+function goToForm() {
+    const name = document.getElementById('pilot-name').value;
+    const license = document.getElementById('license-id').value;
+    if(!name || !license) {
+        alert('برجاء إدخال البيانات كاملة');
+        return;
+    }
+    pilotData.name = name;
+    pilotData.license = license;
+    
+    document.getElementById('login-screen').classList.remove('active');
+    document.getElementById('form-screen').classList.add('active');
+}
+
+function generateDashboard() {
+    const checks = document.querySelectorAll('.imsafe-check');
+    let readiness = 100;
+    let issues = [];
+
+    // IMSAFE logic
+    checks.forEach(check => {
+        const type = check.getAttribute('data-type');
+        const isProblem = (type === 'E') ? !check.checked : check.checked;
+        
+        if(isProblem) {
+            if(type === 'A' || type === 'F') {
+                readiness -= 50;
+            } else {
+                readiness -= 15;
+            }
+            issues.push(type);
+        }
+    });
+
+    // Weight & Balance Logic
+    const fuel = parseFloat(document.getElementById('fuel-input').value) || 0;
+    const pax = parseFloat(document.getElementById('pax-input').value) || 0;
+    const totalWeight = fuel * 6 + pax + 1600; // 1600 is empty weight estimate
+    
+    const wbStatus = document.getElementById('wb-status');
+    if(totalWeight > 2400) { // Max gross weight for C172 is ~2400-2550
+        readiness -= 30;
+        wbStatus.innerHTML = `WEIGHT: <span style="color:var(--danger)">${totalWeight} lbs (OVERLOAD)</span>`;
+        wbStatus.style.borderColor = 'var(--danger)';
+    } else {
+        wbStatus.innerHTML = `WEIGHT: <span style="color:var(--safe)">${totalWeight} lbs (NORMAL)</span>`;
+    }
+
+    // Fuel Endurance
+    const fuelHours = (fuel / 9).toFixed(1); // 9 gallons per hour estimate
+    document.getElementById('fuel-time').textContent = `${fuelHours}h`;
+
+    readiness = Math.max(0, readiness);
+    
+    // Display Logic
+    document.getElementById('display-name').textContent = pilotData.name.toUpperCase();
+    document.getElementById('readiness-pct').textContent = readiness + '%';
+    
+    const gauge = document.getElementById('gauge-container');
+    const statusText = document.getElementById('flight-status-text');
+    
+    if(readiness > 80) {
+        gauge.style.borderColor = 'var(--safe)';
+        statusText.style.color = 'var(--safe)';
+        statusText.textContent = 'GO FOR FLIGHT';
+    } else if(readiness > 50) {
+        gauge.style.borderColor = 'var(--amber)';
+        statusText.style.color = 'var(--amber)';
+        statusText.textContent = 'CAUTION';
+    } else {
+        gauge.style.borderColor = 'var(--danger)';
+        statusText.style.color = 'var(--danger)';
+        statusText.textContent = 'NO-GO / GROUNDED';
+    }
+
+    // Generate Suggestions
+    const suggestContainer = document.getElementById('suggestions-container');
+    suggestContainer.innerHTML = '';
+    
+    if(issues.length === 0 && totalWeight <= 2400) {
+        suggestContainer.innerHTML = '<div class="suggestion-item">✓ جميع الأنظمة الحيوية ممتازة. رحلة سعيدة.</div>';
+    } else {
+        if(totalWeight > 2400) {
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.textContent = '🛑 الوزن زائد: تخلص من بعض الوقود أو الأمتعة لضمان الإقلاع الآمن.';
+            suggestContainer.appendChild(div);
+        }
+        issues.forEach(issue => {
+            let text = '';
+            switch(issue) {
+                case 'I': text = '⚠ مراجعة الطبيب: لا يُنصح بالطيران في حالة الإعياء.'; break;
+                case 'M': text = '⚠ تنبيه: تحقق من قائمة الأدوية المسموحة من FAA.'; break;
+                case 'S': text = '⚠ ضغوط نفسية: قم بتمارين تنفس لمدة 5 دقائق قبل الإقلاع.'; break;
+                case 'A': text = '🛑 خطر: الكحول ممنوع تماماً (8 ساعات على الأقل).'; break;
+                case 'F': text = '🛑 إرهاق: النوم أقل من 6 ساعات يزيد نسبة الخطأ البشري.'; break;
+                case 'E': text = '⚠ حالة عاطفية: تأكد من قدرتك على التركيز الكامل.'; break;
+            }
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.textContent = text;
+            suggestContainer.appendChild(div);
+        });
+    }
+
+    document.getElementById('form-screen').classList.remove('active');
+    document.getElementById('dash-screen').classList.add('active');
+    
+    // Start PFD Animation
+    animatePFD();
+}
+
+function animatePFD() {
+    const horizon = document.getElementById('pfd-horizon');
+    let angle = 0;
+    setInterval(() => {
+        angle = Math.sin(Date.now() / 2000) * 5; // Simulating small bank
+        horizon.style.transform = `rotate(${angle}deg)`;
+    }, 100);
+}
+</script>
+</body>
+</html>
